@@ -9,8 +9,8 @@ var snmp = require("net-snmp");
 var session = snmp.createSession ("127.0.0.1", "Youser");
 session.version = snmp.Version2c;
 
-var date;
 var upTime;
+var date;
 
 var oids = 
 ["1.3.6.1.2.1.25.1.1.0", // System Up Time in String (computer? uptime)
@@ -29,8 +29,17 @@ session.get (oids, function (error, varbinds) {
     }
     //var date = mibOps.toString(varbinds[2]);
     //console.log (date)
-    upTime = varbinds[0];
-    date = varbinds[2];
+    upTime = varbinds[0].value;
+
+    var dateBuffer = Buffer.from(varbinds[2].value);
+    date = new Date(
+        dateBuffer.readUInt16BE(0),
+        dateBuffer.readUInt8(2),
+        dateBuffer.readUInt8(3),
+        dateBuffer.readUInt8(4),
+        dateBuffer.readUInt8(5),
+        dateBuffer.readUInt8(6));
+
     session.close ();
 });
 
@@ -83,7 +92,8 @@ var http = require('http');
 
 http.createServer(function (req, res) {
   res.writeHead(200, {'Content-Type': 'text/html'});
-  res.write(date.toString() + '\n' + upTime + "\nit is right now man");
+  res.write(date.toString() + '\n' + '       uptime: ' + upTime.toString() + "\nit is right now man");
+  console.log("you should be seeing:\n" + date.toString() + '\n' + '       uptime: ' + upTime.toString() + "\nit is right now man");
   res.end();
 }).listen(8080);
 
