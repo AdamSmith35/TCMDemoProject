@@ -6,11 +6,60 @@
 var snmp = require("net-snmp");
 //var mibOps = new MibOperations();
 
-var session = snmp.createSession ("127.0.0.1", "Youser");
-session.version = snmp.Version2c;
-
 var upTime;
 var date;
+
+class TimeObj {
+    constructor(timeTicks){
+        this.timeTicks = timeTicks;
+    }
+
+    get ticks(){
+        return this.timeTicks;
+    }
+
+    get seconds() {
+        return this.timeTicks / 100;
+    }
+
+    get minutes() {
+        return this.timeTicks / 6000;
+    }
+
+    get hours() {
+        return this.timeTicks / 360000;
+    }
+
+    get days() {
+        return this.timeTicks / 8640000;
+    }
+/*
+    get daysRem() {
+        return this.timeTicks % 8640000;
+    }
+
+    get hoursRem() {
+        return (this.timeTicks % 8640000) % 360000;
+    }
+
+    get minutesRem() {
+        return ((this.timeTicks % 8640000) % 360000) % 6000;
+    }
+
+    get secondsRem() {
+        return (((this.timeTicks % 8640000) % 360000) % 6000) % 100;
+    }
+*/
+
+    /*
+    get print() {
+        return "Days: " + Math.floor(this.days()) + 
+        ", Hours: " + this.daysRem()......
+    }*/
+}
+
+var session = snmp.createSession ("127.0.0.1", "Youser");
+session.version = snmp.Version2c;
 
 var oids = 
 ["1.3.6.1.2.1.25.1.1.0", // System Up Time in String (computer? uptime)
@@ -29,7 +78,7 @@ session.get (oids, function (error, varbinds) {
     }
     //var date = mibOps.toString(varbinds[2]);
     //console.log (date)
-    upTime = varbinds[0].value;
+    upTime = new TimeObj(varbinds[0].value);
 
     var dateBuffer = Buffer.from(varbinds[2].value);
     date = new Date(
@@ -49,9 +98,6 @@ session.trap (snmp.TrapType.LinkDown, function (error) {
 }); 
 
 
-
-
-/*
 // ------------------------------------------------
 // some mongodb direct from nodejs on local DB
 // ------------------------------------------------
@@ -61,19 +107,20 @@ var url = "mongodb://localhost:27017/";
 
 MongoClient.connect(url, function(err, db) {
     if(err) throw err;
-    console.log("Database created!"); //not actually yet created until populated w/ content
+    //console.log("Database created!"); //not actually yet created until populated w/ content
     
     var dbo = db.db("mydb");
 
+    /*
     //create the collection
     dbo.createCollection("customers", function(err, res) {
         if (err) throw err;
         console.log("Collection created!"); //not actually yet created until populated w/content
         db.close();
-    });
+    });*/
 
     //insert document into collection
-    var myobj = { name: "Campany Inc", address: "Highway 37" };// may use the manually set ids later but for now I don't yet see a point
+    var myobj = { serverDate: date, serverUpTime: upTime };// may use the manually set ids later but for now I don't yet see a point
 
     dbo.collection("customers").insertOne(myobj, function(err, res) {
         if (err) throw err;
@@ -81,7 +128,6 @@ MongoClient.connect(url, function(err, db) {
         db.close();
     }); 
 });
-*/
 
 
 // ------------------------------------------------
@@ -91,9 +137,21 @@ MongoClient.connect(url, function(err, db) {
 var http = require('http');
 
 http.createServer(function (req, res) {
+
   res.writeHead(200, {'Content-Type': 'text/html'});
-  res.write(date.toString() + '\n' + '       uptime: ' + upTime.toString() + "\nit is right now man");
-  console.log("you should be seeing:\n" + date.toString() + '\n' + '       uptime: ' + upTime.toString() + "\nit is right now man");
+  res.write(date.toString() + '\n' + '       uptime: ~' 
+  + Math.floor(upTime.seconds.toString()) + " seconds, or ~" 
+  + Math.floor(upTime.minutes.toString()) + " minutes, or ~" 
+  + Math.floor(upTime.hours.toString()) + " hours, or ~" 
+  + Math.floor(upTime.days.toString()) + " days.");
+
+  console.log("you should be seeing:\n" + date.toString() 
+  + '\n' + '       uptime: ~' 
+  + Math.floor(upTime.seconds.toString()) + " seconds, or ~" 
+  + Math.floor(upTime.minutes.toString()) + " minutes, or ~" 
+  + Math.floor(upTime.hours.toString()) + " hours, or ~" 
+  + Math.floor(upTime.days.toString()) + " days.");
+
   res.end();
 }).listen(8080);
 
